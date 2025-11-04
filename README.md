@@ -1,30 +1,55 @@
 # RHLunch
 
-A simple command-line tool to get lunch menus from Gourmedia.
+A simple command-line tool to get lunch menus from multiple Stockholm restaurants (Gourmedia, Filmhuset, Karavan).
 
 ## 🥱 Easiest way to run
 
 Install Homebrew (you probably already have this). Run:
+
 ```bash
 brew install uv
 ```
 
 Then just run:
+
 ```bash
-uvx --from git+https://github.com/engdahl/rhlunch lunch
+uvx --from git+https://github.com/hamiltoon/rhlunch lunch
 ```
 
 Voila, lunch is served!
 
 ```
-🍽️  Lunch Menu for Friday, October 31, 2025
-==================================================
+  🍽️  LUNCH MENU  •  Tuesday, November 04, 2025
 
-🥬 Vegetarian Options:
-  • Sheperds pie vegan,svamp,sojafärs,pumpa samt persiljeyoghurt
+  📍  FILMHUSET
+      ──────────────────────────────────────────────────────────────────────────
 
-🥩 Meat Options:
-  • Tonkatsukyckling med chilibearnaise,kålsallad samt stekt sesampotatis
+                                  🥬  Vegetarian
+
+          Indisk vegetarisk curry med aubergine, bönor och spenat serveras med jasminris
+
+                                     🐟  Fish
+
+          Asiatisk fiskgryta med scampi, ingefära, lime, koriander, chili och jasminris
+
+                                     🥩  Meat
+
+          Coq au vin på kycklinglårfilé med rött vin, champinjoner och potatispuré
+
+  📍  KARAVAN
+      ──────────────────────────────────────────────────────────────────────────
+
+                                  🥬  Vegetarian
+
+          Långbakad rotselleri serveras med sojamajo och rostad potatis
+
+                                     🐟  Fish
+
+          Fisk ala bombay serveras basmatiris
+
+                                     🥩  Meat
+
+          Raggmunk med stekt fläsk och lingon
 ```
 
 ---
@@ -156,13 +181,13 @@ deactivate
 ### From GitHub
 
 ```bash
-pip install git+https://github.com/engdahl/rhlunch.git
+pip install git+https://github.com/hamiltoon/rhlunch.git
 ```
 
 ### From source
 
 ```bash
-git clone https://github.com/engdahl/rhlunch.git
+git clone https://github.com/hamiltoon/rhlunch.git
 cd rhlunch
 pip install -e .
 ```
@@ -193,6 +218,20 @@ Show only meat options:
 lunch -m
 ```
 
+Show only fish options:
+
+```bash
+lunch -f
+```
+
+Show only a specific restaurant:
+
+```bash
+lunch -r gourmedia
+lunch -r filmhuset
+lunch -r karavan
+```
+
 Show the whole week menu:
 
 ```bash
@@ -205,19 +244,180 @@ Enable debug logging to troubleshoot issues:
 lunch -d
 ```
 
+Combine options:
+
+```bash
+lunch -r filmhuset -v    # Show only Filmhuset vegetarian options
+lunch -w -m              # Show weekly menu, meat only
+lunch -f -r karavan      # Show only fish from Karavan
+```
+
 ## Example Output
 
 ```
-🍽️  Lunch Menu for Today
-==================================================
+  🍽️  LUNCH MENU  •  Tuesday, November 04, 2025
 
-🥬 Vegetarian Options:
-  • Vegetariskt Moussaka på vegofärs,aubergine,potatis,serveras med tzatziki
+  📍  FILMHUSET
+      ──────────────────────────────────────────────────────────────────────────
 
-🥩 Meat Options:
-  • Ärtsoppa Ärtsoppa/Vegan Fläskbog,timjan,mejram,senap
-  • Pannkaka Yessufs goda pannkisar med drottningsylt och vispad grädde
+                                  🥬  Vegetarian
+
+          Indisk vegetarisk curry med aubergine, bönor och spenat serveras med jasminris
+
+                                     🐟  Fish
+
+          Asiatisk fiskgryta med scampi, ingefära, lime, koriander, chili och jasminris
+
+                                     🥩  Meat
+
+          Coq au vin på kycklinglårfilé med rött vin, champinjoner och potatispuré
+
+  📍  KARAVAN
+      ──────────────────────────────────────────────────────────────────────────
+
+                                  🥬  Vegetarian
+
+          Långbakad rotselleri serveras med sojamajo och rostad potatis
+
+                                     🐟  Fish
+
+          Fisk ala bombay serveras basmatiris
+
+                                     🥩  Meat
+
+          Raggmunk med stekt fläsk och lingon
 ```
+
+## 🤖 MCP Server (AI Assistant Integration)
+
+RHLunch includes an MCP (Model Context Protocol) server that allows AI assistants like Claude to directly query lunch menus.
+
+### What is MCP?
+
+MCP is an open standard that enables AI assistants to securely connect to external data sources and tools. By running RHLunch as an MCP server, you can ask your AI assistant questions like "What's for lunch today?" and get live menu data.
+
+### Setup with GitHub Copilot in VS Code
+
+**Requirements:**
+
+- VS Code 1.99 or later
+- GitHub Copilot & Copilot Chat extensions installed
+- Install `uv`: `brew install uv` (macOS) or see [uv installation docs](https://github.com/astral-sh/uv)
+
+**Option A - Workspace Configuration (Recommended)**
+
+Create a `.vscode/mcp.json` file in your workspace root:
+
+```json
+{
+  "servers": {
+    "rhlunch": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/hamiltoon/rhlunch.git",
+        "rhlunch-mcp"
+      ]
+    }
+  }
+}
+```
+
+**Option B - Using VS Code UI**
+
+1. Open Copilot Chat (click the chat icon in the title bar)
+2. Click the tools 🔧 icon at the bottom of the chat view
+3. Scroll down and click **"Add More Tools..."**
+4. Add the MCP server configuration
+
+**Restart VS Code** to load the MCP server.
+
+Once configured, you can ask Copilot in chat mode:
+
+- "What's for lunch today at the restaurants?"
+- "Show me vegetarian options"
+
+### Setup with Claude Code
+
+Claude Code will automatically detect the `.mcp.json` file in this repository and load the RHLunch MCP server. No manual configuration needed!
+
+The [.mcp.json](.mcp.json) file configures the server to run via `uvx`, which automatically handles installation:
+
+```json
+{
+  "mcpServers": {
+    "rhlunch": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/hamiltoon/rhlunch.git",
+        "rhlunch-mcp"
+      ]
+    }
+  }
+}
+```
+
+### Setup with Claude Desktop
+
+Add the following configuration to your Claude Desktop settings file:
+
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "rhlunch": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/hamiltoon/rhlunch.git",
+        "rhlunch-mcp"
+      ]
+    }
+  }
+}
+```
+
+**Requirements:**
+
+- Install `uv` first: `brew install uv` (macOS) or see [uv installation docs](https://github.com/astral-sh/uv)
+
+Then **restart Claude Desktop** to load the MCP server.
+
+### Development & Testing
+
+Test the MCP server locally using the MCP Inspector:
+
+```bash
+# Install dependencies
+pip install -e .
+
+# Run MCP inspector
+npx @modelcontextprotocol/inspector uvx --from git+https://github.com/hamiltoon/rhlunch.git rhlunch-mcp
+```
+
+### Available MCP Tools
+
+Once configured, Claude can use these tools:
+
+- **`list_restaurants()`** - Get a list of all available restaurants
+- **`get_daily_menu()`** - Get today's lunch menu
+  - Optional parameters: `restaurant`, `vegetarian_only`, `fish_only`, `meat_only`, `target_date`
+- **`get_weekly_menu()`** - Get the weekly lunch menu
+  - Optional parameters: `restaurant`, `vegetarian_only`, `fish_only`, `meat_only`
+
+### Example Prompts for Claude
+
+Once the MCP server is configured, you can ask Claude:
+
+- "What's for lunch today?"
+- "Show me the vegetarian options at Filmhuset"
+- "What's the weekly menu at Karavan?"
+- "Are there any fish dishes available today?"
 
 ## License
 
