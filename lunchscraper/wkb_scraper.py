@@ -1,0 +1,186 @@
+"""Web scraper for Kvartersmenyn restaurant menus."""
+
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime, date
+from typing import Dict, List, Optional
+import re
+import logging
+from .base_scraper import BaseMenuScraper
+from .dish_classifier import DishClassifier
+
+logger = logging.getLogger(__name__)
+
+
+class WKBMenuScraper(BaseMenuScraper):
+    """Scraper for WKB restaurant lunch menus."""
+
+    def __init__(self, restaurant_url: str, restaurant_name: str):
+        super().__init__(restaurant_name)
+        self.restaurant_url = restaurant_url
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9,sv;q=0.8',
+        })
+
+    def _fetch_page(self) -> BeautifulSoup:
+        """Fetch the restaurant page and return BeautifulSoup object."""
+        logger.debug(f"Fetching menu from {self.restaurant_url}")
+        try:
+            response = self.session.get(self.restaurant_url, timeout=10)
+            response.raise_for_status()
+            return BeautifulSoup(response.text, 'html.parser')
+        except Exception as e:
+            raise Exception(f"Failed to fetch menu page: {e}")
+
+    def _parse_weekly_menu(self, soup: BeautifulSoup) -> Dict[str, Dict[str, List[str]]]:
+        """Parse the weekly menu from the page."""
+        weekly_menu = {}
+
+        # Find the menu div
+        menu_div = soup.find('article', class_='category-lunch-wkb-gardet-denna-vecka')
+        if not menu_div:
+            logger.warning("Could not find menu article")
+            return weekly_menu
+
+        # Remove invisible <i> tags that contain codes
+        for i_tag in menu_div.find_all('i'):
+            i_tag.decompose()
+
+        # Get all text content from the div, using get_text with separator
+        full_text = menu_div.get_text(separator='\n')
+
+        # Split into lines and process
+        day_names = ['måndag', 'tisdag', 'onsdag', 'torsdag', 'fredag', 'lördag', 'söndag']
+
+        current_day = None
+        current_dishes = []
+
+        for line in full_text.split('\n'):
+            line = line.strip()
+
+            # Skip empty lines
+            if not line:
+                continue
+
+            # Check if this is a day header
+            if line.lower() in day_names:
+                # Save previous day if we have one
+                if current_day and current_dishes:
+                    menu_items = self._parse_dishes(current_dishes)
+                    if menu_items['vegetarian'] or menu_items['fish'] or menu_items['meat']:
+                        weekly_menu[current_day.lower()] = menu_items
+                        logger.debug(f"Parsed {current_day}: {len(menu_items['vegetarian'])} veg, {len(menu_items['fish'])} fish, {len(menu_items['meat'])} meat, {len(menu_items['dessert'])} dessert")
+
+                # Start new day
+                current_day = line.lower()
+                current_dishes = []
+
+            # Add line to current day
+            elif current_day:
+                current_dishes.append(line)
+
+        # Don't forget the last day
+        if current_day and current_dishes:
+            menu_items = self._parse_dishes(current_dishes)
+            if menu_items['vegetarian'] or menu_items['fish'] or menu_items['meat']:
+                weekly_menu[current_day.lower()] = menu_items
+                logger.debug(f"Parsed {current_day}: {menu_items}") 
+
+        return weekly_menu
+
+    def _parse_dishes(self, dishes: List[str]) -> Dict[str, List[str]]:
+        """Parse a list of dish strings."""
+        if not dishes:
+            return {'vegetarian': [], 'fish': [], 'meat': []}
+
+        # Combine dishes that belong together
+        combined_dishes = []
+        current_dish = []
+
+        for line in dishes:
+            line = line.strip()
+            if len(line) < 2:
+                continue
+
+            # Continue current dish
+            if current_dish:
+                current_dish.append(line)
+            else:
+                # Standalone line
+                combined_dishes.append(line)
+
+        # Don't forget the last dish
+        if current_dish:
+            combined_dishes.append(' '.join(current_dish))
+
+        # Clean up combined dishes
+        cleaned_dishes = []
+        for dish in combined_dishes:
+            # Remove multiple spaces
+            dish = re.sub(r'\s+', ' ', dish).strip()
+
+            if dish and len(dish) >= 5:
+                cleaned_dishes.append(dish)
+
+        # Use classifier to categorize dishes
+        categorized = DishClassifier.classify_dishes(cleaned_dishes)
+
+        # Return all three categories
+        return categorized
+
+    def get_menu_for_day(self, target_date: Optional[date] = None) -> Dict[str, List[str]]:
+        """
+        Get the menu for a specific day.
+
+        Args:
+            target_date: The date to get menu for. If None, uses today.
+
+        Returns:
+            Dictionary with 'vegetarian' and 'meat' menu items for the day.
+        """
+        if target_date is None:
+            target_date = date.today()
+
+        logger.debug(f"Fetching menu for date: {target_date} ({target_date.strftime('%A, %B %d, %Y')})")
+
+        try:
+            soup = self._fetch_page()
+            weekly_menu = self._parse_weekly_menu(soup)
+        except Exception as e:
+            raise Exception(f"Failed to fetch menu: {e}")
+
+        # Get the day of week (0=Monday, 6=Sunday)
+        day_of_week = target_date.weekday()
+        day_names = ['måndag', 'tisdag', 'onsdag', 'torsdag', 'fredag', 'lördag', 'söndag']
+
+        if day_of_week >= len(day_names):
+            logger.warning(f"Invalid day of week: {day_of_week}")
+            return {'vegetarian': [], 'meat': []}
+
+        day_name = day_names[day_of_week].lower()
+        logger.debug(f"Looking for menu for day: {day_name}")
+
+        if day_name not in weekly_menu:
+            raise Exception(f"No menu found for {day_name}")
+
+        return weekly_menu[day_name]
+
+    def get_weekly_menu(self) -> Dict[str, Dict[str, List[str]]]:
+        """
+        Get the menu for the whole week.
+
+        Returns:
+            Dictionary with days as keys and menu items for each day.
+        """
+        logger.debug(f"Fetching weekly menu for {self.restaurant_name}")
+
+        try:
+            soup = self._fetch_page()
+            weekly_menu = self._parse_weekly_menu(soup)
+        except Exception as e:
+            raise Exception(f"Failed to fetch menu: {e}")
+
+        return weekly_menu
