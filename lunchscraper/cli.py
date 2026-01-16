@@ -3,6 +3,8 @@
 import click
 from datetime import date, datetime
 import logging
+
+from lunchscraper.wkb_scraper import WKBMenuScraper
 from .iss_scraper import ISSMenuScraper
 from .kvartersmenyn_scraper import KvartersmenynsMenuScraper
 from .nordrest_scraper import NordrestMenuScraper
@@ -28,6 +30,11 @@ RESTAURANTS = {
         'name': 'Karavan',
         'type': 'kvartersmenyn',
         'url': 'https://karavan.kvartersmenyn.se/'
+    },
+    'wkb': {
+        'name': "WKB",
+        'type': 'wkbmeny',
+        'url': 'https://wkb.se/?page_id=79'
     }
 }
 
@@ -81,6 +88,8 @@ def main(restaurant_key, vegetarian_only, fish_only, meat_only, week, debug):
                 scraper = ISSMenuScraper(config['url'], config['id'], config['name'])
             elif config['type'] == 'kvartersmenyn':
                 scraper = KvartersmenynsMenuScraper(config['url'], config['name'])
+            elif config['type'] == 'wkbmeny':
+                scraper = WKBMenuScraper(config['url'], config['name'])
             elif config['type'] == 'nordrest':
                 scraper = NordrestMenuScraper(config['url'], config['name'])
             else:
@@ -178,6 +187,15 @@ def display_all_daily_menus(all_menus, vegetarian_only, fish_only, meat_only):
                 for item in menu['meat']:
                     click.echo(f"      {item}")
 
+
+        if not vegetarian_only and not fish_only and menu.get('dessert'):
+            has_items = True
+            click.echo()
+            click.echo(click.style("🍰  Dessert".center(80), fg='red', bold=True))
+            click.echo()
+            for item in menu['dessert']:
+                click.echo(f"      {item}")
+
         # Handle case where no menu items found
         if not has_items:
             click.echo(click.style("      ❌ No menu items found for today", fg='yellow'))
@@ -208,7 +226,7 @@ def display_all_weekly_menus(all_menus, vegetarian_only, fish_only, meat_only):
 
     for rest_idx, (restaurant_name, weekly_menu) in enumerate(all_menus.items()):
         # Restaurant header
-        click.echo(click.style(f"  📍  {restaurant_name.upper()}", fg='bright_cyan', bold=True))
+        click.echo(click.style(f"📍  {restaurant_name.upper()}", fg='bright_cyan', bold=True))
         click.echo(click.style("      " + "─" * 74, fg='cyan', dim=True))
 
         for day_key, day_name in day_names.items():
@@ -263,13 +281,22 @@ def display_all_weekly_menus(all_menus, vegetarian_only, fish_only, meat_only):
                         for item in menu['meat']:
                             click.echo(f"          {item}")
 
+                if not vegetarian_only and not fish_only and menu.get('dessert'):
+                    has_items = True
+                    click.echo()
+                    click.echo(click.style("🍰  Dessert".center(80), fg='red', bold=True))
+                    click.echo()
+                    for item in menu['dessert']:
+                        click.echo(f"          {item}")
                 # Show message if no items found
                 if not has_items:
                     click.echo(click.style("          ❌ No menu available", fg='yellow'))
 
+
         # Add spacing between restaurants (except for the last one)
         if rest_idx < len(all_menus) - 1:
             click.echo()
+
 
     click.echo()
 

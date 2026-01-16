@@ -21,7 +21,8 @@ class DishClassifier:
         'meat': [
             'kött:', 'kött', 'kötträtt:', 'kötträtt', 'dagens kött:', 'dagens kött',
             'fågel:', 'fågel'
-        ]
+        ],
+        'dessert': ['efterrätt']
     }
 
     # Ingredient keywords for classification
@@ -50,6 +51,8 @@ class DishClassifier:
         'spenat'
     ]
 
+    DESSERT_KEYWORDS = ['paj', 'vaniljsås', 'dessert']
+
     # Special Swedish dishes that should be classified as meat
     MEAT_DISHES = [
         'ärtsoppa',  # Usually served with pork
@@ -58,7 +61,7 @@ class DishClassifier:
 
     # Labels/headers to skip (not actual dishes)
     SKIP_LABELS = [
-        'extra', 'övrig', 'övrigt', 'dessert', 'tillbehör'
+        'extra', 'övrig', 'övrigt',  'tillbehör'
     ]
 
     @classmethod
@@ -112,6 +115,9 @@ class DishClassifier:
         if any(keyword in dish_lower for keyword in cls.VEGETARIAN_KEYWORDS):
             return 'vegetarian'
 
+        if any(keyword in dish_lower for keyword in cls.DESSERT_KEYWORDS):
+            return 'dessert'
+
         # If previous line was a category marker, use that as fallback
         # This comes AFTER keyword checks so that explicit dishes override markers
         if previous_category:
@@ -138,7 +144,8 @@ class DishClassifier:
         categorized = {
             'vegetarian': [],
             'meat': [],
-            'fish': []
+            'fish': [],
+            'dessert': []
         }
 
         current_marker_category = None
@@ -167,7 +174,7 @@ class DishClassifier:
                 if category != current_marker_category:
                     # Only reset if it's clearly a different category
                     if any(keyword in dish.lower() for keyword in
-                           cls.FISH_KEYWORDS + cls.MEAT_KEYWORDS + cls.VEGETARIAN_KEYWORDS):
+                           cls.FISH_KEYWORDS + cls.MEAT_KEYWORDS + cls.VEGETARIAN_KEYWORDS + cls.DESSERT_KEYWORDS):
                         current_marker_category = None
 
             if category and category in categorized:
@@ -190,6 +197,6 @@ class DishClassifier:
             Dict with vegetarian and meat (fish merged into meat)
         """
         return {
-            'vegetarian': categorized.get('vegetarian', []),
-            'meat': categorized.get('meat', []) + categorized.get('fish', [])
+            'vegetarian': categorized.get('vegetarian', []) + categorized.get('dessert', []),
+            'meat': categorized.get('meat', []) + categorized.get('fish', []) + categorized.get('dessert', [])
         }
