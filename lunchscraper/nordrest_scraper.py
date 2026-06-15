@@ -1,5 +1,6 @@
 """Web scraper for Nordrest restaurant menus (via Castit menu widget)."""
 
+import re
 import requests
 from bs4 import BeautifulSoup
 from datetime import date
@@ -35,77 +36,45 @@ class NordrestMenuScraper(BaseMenuScraper):
             raise Exception(f"Failed to fetch menu page: {e}")
 
     def _parse_weekly_menu(self, soup: BeautifulSoup) -> Dict[str, Dict[str, List[str]]]:
-        """Parse the weekly menu from the page."""
+        """Parse the weekly menu from the Castit widget on the page."""
         weekly_menu = {}
 
-        # The menu is structured as accordion items with class 'accordion-item weekday-item'
-        # Each day is in an accordion-header div
-        day_names = ['Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag', 'Söndag']
-        
-        # Find all accordion items
-        accordion_items = soup.find_all('div', class_='accordion-item')
-        
-        for item in accordion_items:
-            # Check if this is a weekday item
-            if 'weekday-item' not in item.get('class', []):
+        swedish_weekdays = {'måndag', 'tisdag', 'onsdag', 'torsdag', 'fredag', 'lördag', 'söndag'}
+
+        for day_section in soup.find_all('section', class_='castit-day'):
+            classes = day_section.get('class', [])
+            # Skip week-special sections (e.g. "Veckans rätter")
+            if 'castit-week-specials-column' in classes:
                 continue
-            
-            # Find the day header
-            header = item.find('div', class_='accordion-header')
-            if not header:
+
+            # Get the Swedish day name from the title span's data-sv attribute
+            title_span = day_section.find('span', class_='castit-i18n', attrs={'data-sv': True})
+            if not title_span:
                 continue
-            
-            day_text = header.get_text(strip=True)
-            
-            # Check if this is a valid day name
-            day_found = None
-            for day in day_names:
-                if day.lower() == day_text.lower():
-                    day_found = day
-                    break
-            
-            if not day_found:
+            day_sv = title_span.get('data-sv', '').strip().lower()
+            if day_sv not in swedish_weekdays:
                 continue
-            
-            # Find the accordion body/content
-            body = item.find('div', class_='accordion-body') or item.find('div', class_='accordion-content')
-            if not body:
-                # If no accordion-body, get all text after the header
-                body = item
-            
-            # Extract dishes from the body
-            dishes_text = body.get_text(separator='\n')
+
+            # Extract dishes: title + optional description combined into one string
             dishes = []
-            
-            for line in dishes_text.split('\n'):
-                line = line.strip()
-                if not line:
+            for dish_div in day_section.find_all('div', class_='castit-dish'):
+                title_el = dish_div.find('div', class_='castit-dish__title')
+                desc_el = dish_div.find('div', class_='castit-dish__desc')
+                if not title_el:
                     continue
-                
-                # Skip the day name if it appears again
-                if line.lower() == day_found.lower():
-                    continue
-                
-                # Skip lines that are just numbers (prices)
-                if re.match(r'^\d+\.?\d*$', line):
-                    continue
-                
-                # Skip very short lines
-                if len(line) < 3:
-                    continue
-                
-                dishes.append(line)
-            
-            # Parse the dishes
+                dish_text = title_el.get_text(strip=True)
+                if desc_el:
+                    desc_text = desc_el.get_text(strip=True)
+                    if desc_text:
+                        dish_text = f"{dish_text}, {desc_text}"
+                if dish_text and len(dish_text) >= 5:
+                    dishes.append(dish_text)
+
             if dishes:
                 menu_items = self._parse_dishes(dishes)
-                # Check for menu items (either in 'menu' key or in categorized keys)
                 if menu_items.get('menu') or menu_items.get('vegetarian') or menu_items.get('fish') or menu_items.get('meat'):
-                    weekly_menu[day_found.lower()] = menu_items
-                    if menu_items.get('menu'):
-                        logger.debug(f"Parsed {day_found}: {len(menu_items['menu'])} items")
-                    else:
-                        logger.debug(f"Parsed {day_found}: {len(menu_items.get('vegetarian', []))} veg, {len(menu_items.get('fish', []))} fish, {len(menu_items.get('meat', []))} meat")
+                    weekly_menu[day_sv] = menu_items
+                    logger.debug(f"Parsed {day_sv}: {len(menu_items.get('menu', []))} items")
 
         return weekly_menu
 
