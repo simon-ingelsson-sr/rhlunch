@@ -35,15 +35,38 @@ class NordrestMenuScraper(BaseMenuScraper):
         except Exception as e:
             raise Exception(f"Failed to fetch menu page: {e}")
 
+    def _extract_dishes_from_section(self, section) -> List[str]:
+        """Extract dish strings from a castit-day or week-specials section."""
+        dishes = []
+        for dish_div in section.find_all('div', class_='castit-dish'):
+            title_el = dish_div.find('div', class_='castit-dish__title')
+            desc_el = dish_div.find('div', class_='castit-dish__desc')
+            if not title_el:
+                continue
+            dish_text = title_el.get_text(strip=True)
+            if desc_el:
+                desc_text = desc_el.get_text(strip=True)
+                if desc_text:
+                    dish_text = f"{dish_text}, {desc_text}"
+            if dish_text and len(dish_text) >= 5:
+                dishes.append(dish_text)
+        return dishes
+
     def _parse_weekly_menu(self, soup: BeautifulSoup) -> Dict[str, Dict[str, List[str]]]:
         """Parse the weekly menu from the Castit widget on the page."""
         weekly_menu = {}
-
         swedish_weekdays = {'måndag', 'tisdag', 'onsdag', 'torsdag', 'fredag', 'lördag', 'söndag'}
+
+        # Collect week-special dishes (e.g. "Veckans rätt") to append to every day
+        weekly_special_dishes: List[str] = []
+        for day_section in soup.find_all('section', class_='castit-day'):
+            if 'castit-week-specials-column' in day_section.get('class', []):
+                weekly_special_dishes = self._extract_dishes_from_section(day_section)
+                logger.debug(f"Found {len(weekly_special_dishes)} weekly special dish(es)")
+                break
 
         for day_section in soup.find_all('section', class_='castit-day'):
             classes = day_section.get('class', [])
-            # Skip week-special sections (e.g. "Veckans rätter")
             if 'castit-week-specials-column' in classes:
                 continue
 
@@ -55,20 +78,7 @@ class NordrestMenuScraper(BaseMenuScraper):
             if day_sv not in swedish_weekdays:
                 continue
 
-            # Extract dishes: title + optional description combined into one string
-            dishes = []
-            for dish_div in day_section.find_all('div', class_='castit-dish'):
-                title_el = dish_div.find('div', class_='castit-dish__title')
-                desc_el = dish_div.find('div', class_='castit-dish__desc')
-                if not title_el:
-                    continue
-                dish_text = title_el.get_text(strip=True)
-                if desc_el:
-                    desc_text = desc_el.get_text(strip=True)
-                    if desc_text:
-                        dish_text = f"{dish_text}, {desc_text}"
-                if dish_text and len(dish_text) >= 5:
-                    dishes.append(dish_text)
+            dishes = self._extract_dishes_from_section(day_section) + weekly_special_dishes
 
             if dishes:
                 menu_items = self._parse_dishes(dishes)
