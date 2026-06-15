@@ -44,7 +44,7 @@ class DishClassifier:
     VEGETARIAN_KEYWORDS = [
         'vego', 'vegan', 'vegetarisk', 'halloumi', 'falafel', 'tempeh',
         'tofu', 'vegansk', 'vegetariskt', 'bönor', 'linser', 'quinoa',
-        'seitan', 'svampgryta', 'svampsås', 'svampsoppa', 'rotselleri', 'selleri',
+        'seitan', 'svampgryta', 'svampsås', 'svampsoppa', 'rotselleri', 'selleri', 'salladsbar',
         'kikärtor', 'grönsaker', 'vegoburgare', 'vegoköttbullar', 'chili med bönor',
         'böff ala lindström', 'gnocchi', 'zucchini', 'aubergine', 'moussaka på vegofärs',
         'långbakad rotselleri', 'skogssvamp', 'tempura svamp', 'tortellini', 'ricotta',

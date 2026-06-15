@@ -5,7 +5,7 @@ from datetime import date, datetime
 import logging
 
 from lunchscraper.wkb_scraper import WKBMenuScraper
-from .iss_scraper import ISSMenuScraper
+from .nordrest_scraper import NordrestMenuScraper
 from .kvartersmenyn_scraper import KvartersmenynsMenuScraper
 
 logging.basicConfig(
@@ -17,9 +17,8 @@ logging.basicConfig(
 RESTAURANTS = {
     'gourmedia': {
         'name': 'Gourmedia',
-        'type': 'iss',
-        'url': 'https://www.iss-menyer.se/restaurants/restaurang-gourmedia',
-        'id': 'Restaurang Gourmedia'
+        'type': 'nordrest',
+        'url': 'https://www.nordrest.se/restaurang/gourmedia/'
     },
     'filmhuset': {
         'name': 'Filmhuset',
@@ -28,8 +27,8 @@ RESTAURANTS = {
     },
     'karavan': {
         'name': 'Karavan',
-        'type': 'kvartersmenyn',
-        'url': 'https://karavan.kvartersmenyn.se/'
+        'type': 'nordrest',
+        'url': 'https://www.nordrest.se/restaurang/karavan/'
     },
     'wkb': {
         'name': "WKB",
@@ -84,8 +83,8 @@ def main(restaurant_key, vegetarian_only, fish_only, meat_only, week, debug):
     for key, config in restaurants_to_fetch.items():
         try:
             # Create appropriate scraper based on type
-            if config['type'] == 'iss':
-                scraper = ISSMenuScraper(config['url'], config['id'], config['name'])
+            if config['type'] == 'nordrest':
+                scraper = NordrestMenuScraper(config['url'], config['name'])
             elif config['type'] == 'kvartersmenyn':
                 scraper = KvartersmenynsMenuScraper(config['url'], config['name'])
             elif config['type'] == 'wkbmeny':
@@ -155,7 +154,7 @@ def display_all_daily_menus(all_menus, vegetarian_only, fish_only, meat_only):
             click.echo(click.style("🥬  Vegetarian".center(80), fg='green', bold=True))
             click.echo()
             for item in menu['vegetarian']:
-                click.echo(f"      {item}")
+                click.echo(f"    • {item}")
 
         # Show fish options
         if not vegetarian_only and not meat_only and menu.get('fish'):
@@ -164,7 +163,7 @@ def display_all_daily_menus(all_menus, vegetarian_only, fish_only, meat_only):
             click.echo(click.style("🐟  Fish".center(80), fg='blue', bold=True))
             click.echo()
             for item in menu['fish']:
-                click.echo(f"      {item}")
+                click.echo(f"    • {item}")
 
         # Show meat options
         if not vegetarian_only and not fish_only and menu.get('meat'):
@@ -173,7 +172,7 @@ def display_all_daily_menus(all_menus, vegetarian_only, fish_only, meat_only):
             click.echo(click.style("🥩  Meat".center(80), fg='red', bold=True))
             click.echo()
             for item in menu['meat']:
-                click.echo(f"      {item}")
+                click.echo(f"    • {item}")
 
 
         if not vegetarian_only and not fish_only and menu.get('dessert'):
@@ -182,7 +181,7 @@ def display_all_daily_menus(all_menus, vegetarian_only, fish_only, meat_only):
             click.echo(click.style("🍰  Dessert".center(80), fg='red', bold=True))
             click.echo()
             for item in menu['dessert']:
-                click.echo(f"      {item}")
+                click.echo(f"    • {item}")
 
         # Handle case where no menu items found
         if not has_items:
@@ -239,7 +238,7 @@ def display_all_weekly_menus(all_menus, vegetarian_only, fish_only, meat_only):
                     click.echo(click.style("🥬  Vegetarian".center(80), fg='green', bold=True))
                     click.echo()
                     for item in menu['vegetarian']:
-                        click.echo(f"          {item}")
+                        click.echo(f"        • {item}")
 
                 # Show fish options
                 if not vegetarian_only and not meat_only and menu.get('fish'):
@@ -248,7 +247,7 @@ def display_all_weekly_menus(all_menus, vegetarian_only, fish_only, meat_only):
                     click.echo(click.style("🐟  Fish".center(80), fg='blue', bold=True))
                     click.echo()
                     for item in menu['fish']:
-                        click.echo(f"          {item}")
+                        click.echo(f"        • {item}")
 
                 # Show meat options
                 if not vegetarian_only and not fish_only and menu.get('meat'):
@@ -257,7 +256,7 @@ def display_all_weekly_menus(all_menus, vegetarian_only, fish_only, meat_only):
                     click.echo(click.style("🥩  Meat".center(80), fg='red', bold=True))
                     click.echo()
                     for item in menu['meat']:
-                        click.echo(f"          {item}")
+                        click.echo(f"        • {item}")
 
                 if not vegetarian_only and not fish_only and menu.get('dessert'):
                     has_items = True
@@ -265,7 +264,7 @@ def display_all_weekly_menus(all_menus, vegetarian_only, fish_only, meat_only):
                     click.echo(click.style("🍰  Dessert".center(80), fg='red', bold=True))
                     click.echo()
                     for item in menu['dessert']:
-                        click.echo(f"          {item}")
+                        click.echo(f"        • {item}")
                 # Show message if no items found
                 if not has_items:
                     click.echo(click.style("          ❌ No menu available", fg='yellow'))
