@@ -7,6 +7,7 @@ import logging
 from lunchscraper.wkb_scraper import WKBMenuScraper
 from .nordrest_scraper import NordrestMenuScraper
 from .kvartersmenyn_scraper import KvartersmenynsMenuScraper
+from .nordrest_scraper import NordrestMenuScraper
 
 logging.basicConfig(
     level=logging.INFO,
@@ -89,6 +90,8 @@ def main(restaurant_key, vegetarian_only, fish_only, meat_only, week, debug):
                 scraper = KvartersmenynsMenuScraper(config['url'], config['name'])
             elif config['type'] == 'wkbmeny':
                 scraper = WKBMenuScraper(config['url'], config['name'])
+            elif config['type'] == 'nordrest':
+                scraper = NordrestMenuScraper(config['url'], config['name'])
             else:
                 click.echo(f"⚠️  Unknown scraper type for {config['name']}", err=True)
                 continue
@@ -147,32 +150,42 @@ def display_all_daily_menus(all_menus, vegetarian_only, fish_only, meat_only):
 
         has_items = False
 
-        # Show vegetarian options
-        if not meat_only and not fish_only and menu.get('vegetarian'):
+        # Check for general "menu" key first (for menus without categorization)
+        if menu.get('menu'):
             has_items = True
             click.echo()
-            click.echo(click.style("🥬  Vegetarian".center(80), fg='green', bold=True))
+            click.echo(click.style("🍽️   Menu".center(80), fg='bright_white', bold=True))
             click.echo()
-            for item in menu['vegetarian']:
-                click.echo(f"    • {item}")
+            for item in menu['menu']:
+                click.echo(f"      {item}")
+        else:
+            # Standard categorized menu
+            # Show vegetarian options
+            if not meat_only and not fish_only and menu.get('vegetarian'):
+                has_items = True
+                click.echo()
+                click.echo(click.style("🥬  Vegetarian".center(80), fg='green', bold=True))
+                click.echo()
+                for item in menu['vegetarian']:
+                    click.echo(f"      {item}")
 
-        # Show fish options
-        if not vegetarian_only and not meat_only and menu.get('fish'):
-            has_items = True
-            click.echo()
-            click.echo(click.style("🐟  Fish".center(80), fg='blue', bold=True))
-            click.echo()
-            for item in menu['fish']:
-                click.echo(f"    • {item}")
+            # Show fish options
+            if not vegetarian_only and not meat_only and menu.get('fish'):
+                has_items = True
+                click.echo()
+                click.echo(click.style("🐟  Fish".center(80), fg='blue', bold=True))
+                click.echo()
+                for item in menu['fish']:
+                    click.echo(f"      {item}")
 
-        # Show meat options
-        if not vegetarian_only and not fish_only and menu.get('meat'):
-            has_items = True
-            click.echo()
-            click.echo(click.style("🥩  Meat".center(80), fg='red', bold=True))
-            click.echo()
-            for item in menu['meat']:
-                click.echo(f"    • {item}")
+            # Show meat options
+            if not vegetarian_only and not fish_only and menu.get('meat'):
+                has_items = True
+                click.echo()
+                click.echo(click.style("🥩  Meat".center(80), fg='red', bold=True))
+                click.echo()
+                for item in menu['meat']:
+                    click.echo(f"      {item}")
 
 
         if not vegetarian_only and not fish_only and menu.get('dessert'):
@@ -221,7 +234,7 @@ def display_all_weekly_menus(all_menus, vegetarian_only, fish_only, meat_only):
                 menu = weekly_menu[day_key]
 
                 # Skip if no menu items and it's a weekend
-                if not menu.get('vegetarian') and not menu.get('fish') and not menu.get('meat'):
+                if not menu.get('menu') and not menu.get('vegetarian') and not menu.get('fish') and not menu.get('meat'):
                     if day_key in ['lördag', 'söndag']:
                         continue  # Skip empty weekends
 
@@ -253,7 +266,7 @@ def display_all_weekly_menus(all_menus, vegetarian_only, fish_only, meat_only):
                 if not vegetarian_only and not fish_only and menu.get('meat'):
                     has_items = True
                     click.echo()
-                    click.echo(click.style("🥩  Meat".center(80), fg='red', bold=True))
+                    click.echo(click.style("🍽️  Menu".center(80), fg='bright_white', bold=True))
                     click.echo()
                     for item in menu['meat']:
                         click.echo(f"        • {item}")

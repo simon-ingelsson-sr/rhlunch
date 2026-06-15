@@ -6,6 +6,7 @@ from mcp.server.fastmcp import FastMCP
 
 from .nordrest_scraper import NordrestMenuScraper
 from .kvartersmenyn_scraper import KvartersmenynsMenuScraper
+from .nordrest_scraper import NordrestMenuScraper
 
 # Initialize FastMCP server
 mcp = FastMCP("RHLunch")
@@ -46,6 +47,11 @@ def _create_scraper(restaurant_key: str):
             restaurant_url=config['url'],
             restaurant_name=config['name']
         )
+    elif config['type'] == 'nordrest':
+        return NordrestMenuScraper(
+            restaurant_url=config['url'],
+            restaurant_name=config['name']
+        )
     else:
         raise ValueError(f"Unknown restaurant type: {config['type']}")
 
@@ -55,6 +61,11 @@ def _filter_menu(menu: Dict[str, List[str]],
                  fish_only: bool = False,
                  meat_only: bool = False) -> Dict[str, List[str]]:
     """Filter menu based on dietary preferences."""
+    # If menu has a general "menu" key, return it as-is (no filtering for uncategorized menus)
+    if menu.get('menu'):
+        return menu
+    
+    # Standard filtering for categorized menus
     if vegetarian_only:
         return {'vegetarian': menu.get('vegetarian', [])}
     elif fish_only:
@@ -68,20 +79,27 @@ def _format_menu_text(restaurant_name: str, menu: Dict[str, List[str]]) -> str:
     """Format menu as readable text."""
     lines = [f"\n📍 {restaurant_name}", "─" * 50]
 
-    if menu.get('vegetarian'):
-        lines.append("\n🥬 Vegetarian:")
-        for item in menu['vegetarian']:
+    # Check for general "menu" key first (for menus without categorization)
+    if menu.get('menu'):
+        lines.append("\n🍽️ Menu:")
+        for item in menu['menu']:
             lines.append(f"  • {item}")
+    else:
+        # Standard categorized menu
+        if menu.get('vegetarian'):
+            lines.append("\n🥬 Vegetarian:")
+            for item in menu['vegetarian']:
+                lines.append(f"  • {item}")
 
-    if menu.get('fish'):
-        lines.append("\n🐟 Fish:")
-        for item in menu['fish']:
-            lines.append(f"  • {item}")
+        if menu.get('fish'):
+            lines.append("\n🐟 Fish:")
+            for item in menu['fish']:
+                lines.append(f"  • {item}")
 
-    if menu.get('meat'):
-        lines.append("\n🥩 Meat:")
-        for item in menu['meat']:
-            lines.append(f"  • {item}")
+        if menu.get('meat'):
+            lines.append("\n🥩 Meat:")
+            for item in menu['meat']:
+                lines.append(f"  • {item}")
 
     if not any(menu.values()):
         lines.append("\n❌ No menu available")
@@ -209,20 +227,27 @@ def get_weekly_menu(
 
                 result.append(f"\n📅 {english_day}")
 
-                if filtered_menu.get('vegetarian'):
-                    result.append("\n🥬 Vegetarian:")
-                    for item in filtered_menu['vegetarian']:
+                # Check for general "menu" key first (for menus without categorization)
+                if filtered_menu.get('menu'):
+                    result.append("\n🍽️ Menu:")
+                    for item in filtered_menu['menu']:
                         result.append(f"  • {item}")
+                else:
+                    # Standard categorized menu
+                    if filtered_menu.get('vegetarian'):
+                        result.append("\n🥬 Vegetarian:")
+                        for item in filtered_menu['vegetarian']:
+                            result.append(f"  • {item}")
 
-                if filtered_menu.get('fish'):
-                    result.append("\n🐟 Fish:")
-                    for item in filtered_menu['fish']:
-                        result.append(f"  • {item}")
+                    if filtered_menu.get('fish'):
+                        result.append("\n🐟 Fish:")
+                        for item in filtered_menu['fish']:
+                            result.append(f"  • {item}")
 
-                if filtered_menu.get('meat'):
-                    result.append("\n🥩 Meat:")
-                    for item in filtered_menu['meat']:
-                        result.append(f"  • {item}")
+                    if filtered_menu.get('meat'):
+                        result.append("\n🥩 Meat:")
+                        for item in filtered_menu['meat']:
+                            result.append(f"  • {item}")
 
                 if not any(filtered_menu.values()):
                     result.append("  ❌ No menu available")
